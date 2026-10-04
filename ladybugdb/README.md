@@ -84,9 +84,8 @@ All checks pass.
 uv run --frozen pytest correctness_complex14.py -rx
 ```
 
-Ten of the 14 queries pass. The known failures are:
+13 of the 14 queries pass. Q2, Q8 and Q9 match a Message through a relationship type alternation such as `[:postHasCreator|commentHasCreator]`, as the FalkorDB port does. The original `UNION ALL` branches applied `ORDER BY ... LIMIT 20` to the last branch only. The known failures are:
 
-- **Q2, Q8, Q9:** the query text applies `ORDER BY ... LIMIT 20` after `UNION ALL`, which sorts and limits only the last branch. For example, Q2 returns all 10,378 matching posts unsorted plus the 20 latest comments, instead of the 20 latest messages.
 - **Q1:** `COLLECT()` over only nulls returns NULL instead of an empty list, for friends without a university.
 - **Q14 at distance 4:** the unrolled chain runs four `OPTIONAL MATCH` clauses per path edge, and their matches multiply before they are counted, so the 160-path pair exhausts the buffer pool.
 

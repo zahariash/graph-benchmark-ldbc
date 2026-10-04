@@ -84,7 +84,7 @@ cd ladybugdb && uv run --frozen pytest correctness_complex14.py -rx
 | Engine | Pass | Known failures |
 | --- | ---: | --- |
 | FalkorDB 6.0.1 | 21 | – |
-| Ladybug 0.21.1 | 15 | Q2, Q8, Q9 (`ORDER BY ... LIMIT` after `UNION ALL` applies to the last branch only), Q1 (`COLLECT()` of only nulls is NULL), Q14 at distance 4 (buffer pool exhausted) |
+| Ladybug 0.21.1 | 18 | Q1 (`COLLECT()` of only nulls is NULL), Q14 at distance 4 (buffer pool exhausted) |
 
 Pass counts pytest tests: the 14 queries, the six path checks and, for FalkorDB, `test_params`, which checks that its query parameters match the oracle's.
 

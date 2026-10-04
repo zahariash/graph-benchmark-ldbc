@@ -13,11 +13,11 @@ are applied:
 Schema adaptations (data-model differences, unavoidable):
 - ``Person.id`` -> ``Person.ID``; ``KNOWS`` -> ``knows`` (stored directed,
   hence traversed undirected ``-[:knows]-`` everywhere).
-- ``Message`` (Post|Comment superclass) -> ``Post``/``Comment`` branches
-  combined with ``UNION ALL`` (Q2/Q8/Q9), or two ``OPTIONAL MATCH`` branches
-  where a post-``UNION`` aggregation is required (Q3) or a post-``UNION``
-  ``WITH`` (head-per-group) is required (Q7), since Ladybug parses
-  ``UNION ALL`` followed only by ``ORDER BY``/``SKIP``/``LIMIT``.
+- ``Message`` (Post|Comment superclass) -> a relationship type alternation
+  such as ``[:postHasCreator|commentHasCreator]`` to an unlabelled node (Q2/Q8/
+  Q9; each type connects only Posts or only Comments), or two ``OPTIONAL
+  MATCH`` branches where the per-kind properties differ (Q3, Q7). A trailing
+  ``ORDER BY``/``LIMIT`` after ``UNION ALL`` would apply to the last branch only.
 - ``HAS_CREATOR`` -> ``postHasCreator`` / ``commentHasCreator``.
 - ``REPLY_OF`` -> ``replyOfPost`` / ``replyOfComment``.
 - ``LIKES`` (with ``like.creationDate``) -> ``likePost`` / ``likeComment``.
@@ -174,8 +174,7 @@ def run_query1(conn: Connection, personId: int | None = None, firstName: str | N
 def run_query2(conn: Connection, personId: int | None = None, maxDate: str | None = None):
     """Q2. Recent posts+comments of friends of $personId, created <= $maxDate.
 
-    Official shape: single MATCH/WHERE/RETURN + ORDER BY/LIMIT; Message split
-    into Post/Comment UNION ALL branches (schema), DB-level ORDER BY/LIMIT.
+    Official shape: single MATCH/WHERE/RETURN + ORDER BY/LIMIT.
     """
     p = PARAMS[2].copy()
     if personId is not None:
@@ -183,18 +182,12 @@ def run_query2(conn: Connection, personId: int | None = None, maxDate: str | Non
     if maxDate is not None:
         p["maxDate"] = maxDate
     query = """
-        MATCH (:Person {ID: $personId})-[:knows]-(friend:Person)<-[:postHasCreator]-(message:Post)
+        MATCH (:Person {ID: $personId})-[:knows]-(friend:Person)
+              <-[:postHasCreator|commentHasCreator]-(message)
         WHERE message.creationDate <= TIMESTAMP($maxDate)
         RETURN friend.ID AS personId, friend.firstName AS personFirstName,
                friend.lastName AS personLastName, message.ID AS postOrCommentId,
                COALESCE(message.content, message.imageFile) AS postOrCommentContent,
-               message.creationDate AS postOrCommentCreationDate
-        UNION ALL
-        MATCH (:Person {ID: $personId})-[:knows]-(friend:Person)<-[:commentHasCreator]-(message:Comment)
-        WHERE message.creationDate <= TIMESTAMP($maxDate)
-        RETURN friend.ID AS personId, friend.firstName AS personFirstName,
-               friend.lastName AS personLastName, message.ID AS postOrCommentId,
-               message.content AS postOrCommentContent,
                message.creationDate AS postOrCommentCreationDate
         ORDER BY postOrCommentCreationDate DESC, postOrCommentId ASC
         LIMIT 20;
@@ -441,22 +434,14 @@ def run_query7(conn: Connection, personId: int | None = None):
 def run_query8(conn: Connection, personId: int | None = None):
     """Q8. Most recent reply comments to $personId's posts+comments.
 
-    Official shape: single MATCH/RETURN/ORDER BY/LIMIT over REPLY_OF;
-    replyOfPost/replyOfComment are UNION ALL branches (schema).
+    Official shape: single MATCH/RETURN/ORDER BY/LIMIT over REPLY_OF.
     """
     p = PARAMS[8].copy()
     if personId is not None:
         p["personId"] = personId
     query = """
-        MATCH (start:Person {ID: $personId})<-[:postHasCreator]-(post:Post)
-              <-[:replyOfPost]-(comment:Comment)-[:commentHasCreator]->(person:Person)
-        RETURN person.ID AS personId, person.firstName AS personFirstName,
-               person.lastName AS personLastName,
-               comment.creationDate AS commentCreationDate, comment.ID AS commentId,
-               comment.content AS commentContent
-        UNION ALL
-        MATCH (start:Person {ID: $personId})<-[:commentHasCreator]-(parent:Comment)
-              <-[:replyOfComment]-(comment:Comment)-[:commentHasCreator]->(person:Person)
+        MATCH (start:Person {ID: $personId})<-[:postHasCreator|commentHasCreator]-()
+              <-[:replyOfPost|replyOfComment]-(comment:Comment)-[:commentHasCreator]->(person:Person)
         RETURN person.ID AS personId, person.firstName AS personFirstName,
                person.lastName AS personLastName,
                comment.creationDate AS commentCreationDate, comment.ID AS commentId,
@@ -474,7 +459,7 @@ def run_query9(conn: Connection, personId: int | None = None, maxDate: str | Non
     """Q9. Recent posts+comments of friends/FoF of $personId, before $maxDate.
 
     Official shape: neighbourhood collect + UNWIND + message MATCH +
-    RETURN/ORDER BY/LIMIT; Post/Comment are UNION ALL branches (schema).
+    RETURN/ORDER BY/LIMIT.
     """
     p = PARAMS[9].copy()
     if personId is not None:
@@ -486,22 +471,11 @@ def run_query9(conn: Connection, personId: int | None = None, maxDate: str | Non
         WHERE NOT friend = root
         WITH COLLECT(DISTINCT friend) AS friends
         UNWIND friends AS f
-        MATCH (f)<-[:postHasCreator]-(message:Post)
+        MATCH (f)<-[:postHasCreator|commentHasCreator]-(message)
         WHERE message.creationDate < TIMESTAMP($maxDate)
         RETURN f.ID AS personId, f.firstName AS personFirstName,
                f.lastName AS personLastName, message.ID AS commentOrPostId,
                COALESCE(message.content, message.imageFile) AS commentOrPostContent,
-               message.creationDate AS commentOrPostCreationDate
-        UNION ALL
-        MATCH (root:Person {ID: $personId})-[:knows*1..2]-(friend:Person)
-        WHERE NOT friend = root
-        WITH COLLECT(DISTINCT friend) AS friends
-        UNWIND friends AS f
-        MATCH (f)<-[:commentHasCreator]-(message:Comment)
-        WHERE message.creationDate < TIMESTAMP($maxDate)
-        RETURN f.ID AS personId, f.firstName AS personFirstName,
-               f.lastName AS personLastName, message.ID AS commentOrPostId,
-               message.content AS commentOrPostContent,
                message.creationDate AS commentOrPostCreationDate
         ORDER BY commentOrPostCreationDate DESC, commentOrPostId ASC
         LIMIT 20;
