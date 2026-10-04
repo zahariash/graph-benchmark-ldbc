@@ -97,6 +97,10 @@ Once constructed, the graph is well-connected and has rich relationships between
 Navigate to each directory and see the `query.py` files for
 each of the 30 queries run in the benchmark.
 
+## Correctness checks
+
+Each engine directory also has a `correctness_query.py` that compares full query results, including the 30 benchmark queries expanded to complete result sets, with expected results computed directly from the CSVs. Neo4j, Kuzu and Ladybug pass every check, and all 30 benchmark queries pass on every engine. See [correctness/README.md](correctness/README.md) for the design, how to run it and the known failures in FalkorDB and lance-graph.
+
 ## High-level results
 
 Latest Ladybug measurements: **2026-09-30** (other engines: **2026-09-03**), on an Apple M5 with 10 logical CPUs and 24 GiB RAM, running macOS 26.6.2 and Python 3.13.14. Each engine has a completed 30-query suite, with all assertions passing and at least five measured rounds per query.
