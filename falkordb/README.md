@@ -64,6 +64,16 @@ uv run --frozen pytest benchmark_query.py \
   --benchmark-sort=fullname
 ```
 
+## Correctness checks
+
+`correctness_query.py` compares full query results with expected results computed from the CSVs (see [correctness/README.md](../correctness/README.md)). Run from this directory:
+
+```sh
+uv run --frozen pytest correctness_query.py -rx
+```
+
+The one known failure is the open upstream issue [#2441](https://github.com/FalkorDB/FalkorDB/issues/2441): a relationship can be reused within one path. `-rx` lists it.
+
 ## Results
 
 Measured on **2026-10-04** on an AMD Ryzen 9 6900HS (16 logical CPUs, 30 GiB RAM) running Linux 7.1.3 and Python 3.14.0, with FalkorDB 6.0.1 in Docker started from the provided `docker-compose.yml` (`THREAD_COUNT` and `OMP_THREAD_COUNT` 16, query timeouts disabled, unlimited result set size). This is a different machine from the Apple M5 used for the other engines, so these numbers are not directly comparable with the main table.

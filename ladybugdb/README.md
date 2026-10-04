@@ -63,3 +63,13 @@ uv run --frozen pytest benchmark_query.py \
 ```
 
 Latest CLI output: [Ladybug 0.21.1](../results/ladybug-0.21.1.txt). The [raw benchmark JSON](../results/ladybug-0.21.1.json) includes per-round timings. All 30 query assertions passed. The [0.21.0 output](../results/archived/ladybug-0.21.0.txt) remains available for comparison.
+
+## Correctness checks
+
+`correctness_query.py` compares full query results with expected results computed from the CSVs (see [correctness/README.md](../correctness/README.md)). Run from this directory:
+
+```sh
+uv run --frozen pytest correctness_query.py -rx
+```
+
+All checks pass.

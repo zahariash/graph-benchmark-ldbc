@@ -104,3 +104,13 @@ Legend:
   OPS: Operations Per Second, computed as 1 / Mean
 =========================================== 30 passed in 23.96s ===========================================
 ```
+
+## Correctness checks
+
+`correctness_query.py` compares full query results with expected results computed from the CSVs (see [correctness/README.md](../correctness/README.md)). Run from this directory:
+
+```sh
+uv run --frozen pytest correctness_query.py -rx
+```
+
+All checks pass.
