@@ -95,3 +95,53 @@ The run before 6.0.1 used FalkorDB 4.22.0, which has the C engine, on the same m
 - The three slowest 4.22.0 queries improved most. Q12 fell from 8,054 ms to 1.8 ms and Q16 from 105 ms to 7.1 ms: 6.0.1 starts both from the indexed `Place`, where 4.22.0 scanned every `Comment` or `Post`. Q30 fell from 1,281 s (a single run, excluded from the 4.22.0 suite) to 81.6 s, so it is now part of the timed suite.
 - Q2, Q3, Q13, Q28 and Q29 got slower, from 0.27–2.1 ms to 6.2–8.5 ms. In Q2 and Q3, `GRAPH.PROFILE` shows the traversal over `postHasCreator` taking about 6.6 ms even when it expands a single post; Q29 has the same shape as Q2. Q28 now starts from the `Tagclass` and expands about 19,000 rows before filtering on `Place.name`.
 - Ingestion was slower (950 s for the relationships, 710 s on 4.22.0) and the graph uses more memory (2.84 GB, 1.87 GB on 4.22.0).
+
+## LDBC Interactive complex queries
+
+`query_complex14.py` ports the official [LDBC SNB Interactive v1 complex queries Q1–Q14](https://github.com/ldbc/ldbc_snb_interactive_v1_impls/tree/main/cypher/queries) to this graph, with the parameters of `ladybugdb/query_complex14.py`. Each query is one statement with the official clause structure. The module docstring lists every adaptation:
+
+- The graph has no `Message` label, so a Message edge becomes a type alternation such as `[:postHasCreator|commentHasCreator]` to an unlabelled node.
+- Dates are ISO strings, which order the same way as the timestamps they encode.
+- Several clauses are split differently to avoid FalkorDB 6.0.1 planner bugs. A `WHERE` after `UNWIND`, `LIMIT` or an aggregating `WITH` can run before its variable is bound and drop every row ([#2557](https://github.com/FalkorDB/FalkorDB/issues/2557), [#3082](https://github.com/FalkorDB/FalkorDB/issues/3082), [#2556](https://github.com/FalkorDB/FalkorDB/issues/2556)). An `OPTIONAL MATCH` can be anchored on an unbound variable ([#3037](https://github.com/FalkorDB/FalkorDB/issues/3037)). A variable-length traversal followed by a location hop starts from every city instead of the indexed person. Without these workarounds Q1 and Q9 return no rows, Q5 counts zero posts per forum, Q6 fails with a type error, Q3 takes 73 s and Q10 times out.
+
+Run all 14 queries, or a subset:
+
+```sh
+uv run query_complex14.py
+uv run query_complex14.py "1,7,13"
+```
+
+Benchmark them with the same pytest-benchmark flags as above, using `benchmark_complex14.py`.
+
+`correctness_complex14.py` compares every result with the expected result computed from the CSVs by [`correctness/complex14.py`](../correctness/complex14.py). It also runs Q13 and Q14 on three pairs at `knows` distance 2, 3 and 4, because the benchmark pair are direct friends:
+
+```sh
+uv run --frozen pytest correctness_complex14.py -rx
+```
+
+All 14 queries and all six extra path checks pass.
+
+### Results
+
+Measured on **2026-10-04** on the machine and FalkorDB setup described above, with Ladybug 0.21.1 measured on the same machine for comparison ([FalkorDB CLI output](../results/falkordb-6.0.1-complex14.txt), [FalkorDB JSON](../results/falkordb-6.0.1-complex14.json), [Ladybug CLI output](../results/ladybug-0.21.1-complex14.txt), [Ladybug JSON](../results/ladybug-0.21.1-complex14.json)).
+
+| Query | FalkorDB 6.0.1 mean (ms) | Ladybug 0.21.1 mean (ms) |
+| --- | ---: | ---: |
+| Q1 Transitive friends with a certain name | 164.9 | 71.0 |
+| Q2 Recent messages by your friends | 849.2 | 89.6 ¹ |
+| Q3 Friends and friends of friends that have been to given countries | 2,584.7 | 481.8 |
+| Q4 New topics | 120.4 | 210.9 |
+| Q5 New groups | 2,588.1 | 885.8 |
+| Q6 Tag co-occurrence | 907.7 | 659.5 |
+| Q7 Recent likers | 550.7 | 76.6 |
+| Q8 Recent replies | 875.5 | 22.6 ¹ |
+| Q9 Recent messages by friends or friends of friends | 2,145.4 | 431.7 ¹ |
+| Q10 Friend recommendation | 1,277.6 | 453.2 |
+| Q11 Job referral | 34.6 | 16.9 |
+| Q12 Expert search | 552.2 | 456.2 |
+| Q13 Single shortest path | 0.3 | 5.9 |
+| Q14 Trusted connection paths | 557.4 | 70.7 |
+
+¹ Ladybug's Q2, Q8 and Q9 return wrong results: they apply `ORDER BY ... LIMIT 20` to only the last `UNION ALL` branch, so they skip most of the sorting work (see [the Ladybug README](../ladybugdb/README.md#ldbc-interactive-complex-queries)). These times are not comparable.
+
+FalkorDB is faster on Q4 and Q13. On the other nine comparable queries it is 1.2–7.9× slower. The Q13 and Q14 benchmark pair are direct friends, so both queries time a single-edge path. On the 160 shortest paths between persons 933 and 4598 (distance 4), FalkorDB's Q14 takes about 4.5 s. Ladybug's unrolled Q14 runs out of buffer-pool memory on that pair.
