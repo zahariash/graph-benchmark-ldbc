@@ -127,19 +127,19 @@ Measured on **2026-10-04** on the machine and FalkorDB setup described above, wi
 
 | Query | FalkorDB 6.0.1 mean (ms) | Ladybug 0.21.1 mean (ms) |
 | --- | ---: | ---: |
-| Q1 Transitive friends with a certain name | 164.9 | 71.3 |
-| Q2 Recent messages by your friends | 849.2 | 76.9 |
-| Q3 Friends and friends of friends that have been to given countries | 2,584.7 | 502.0 |
-| Q4 New topics | 120.4 | 222.6 |
-| Q5 New groups | 2,588.1 | 914.7 |
-| Q6 Tag co-occurrence | 907.7 | 683.7 |
-| Q7 Recent likers | 550.7 | 78.7 |
-| Q8 Recent replies | 875.5 | 18.4 |
-| Q9 Recent messages by friends or friends of friends | 2,145.4 | 348.0 |
-| Q10 Friend recommendation | 1,277.6 | 463.5 |
-| Q11 Job referral | 34.6 | 17.5 |
-| Q12 Expert search | 552.2 | 456.6 |
-| Q13 Single shortest path | 0.3 | 6.0 |
-| Q14 Trusted connection paths | 557.4 | 74.0 |
+| Q1 Transitive friends with a certain name | 164.9 | 72.3 |
+| Q2 Recent messages by your friends | 849.2 | 78.5 |
+| Q3 Friends and friends of friends that have been to given countries | 2,584.7 | 503.3 |
+| Q4 New topics | 120.4 | 217.3 |
+| Q5 New groups | 2,588.1 | 943.2 |
+| Q6 Tag co-occurrence | 907.7 | 671.2 |
+| Q7 Recent likers | 550.7 | 77.5 |
+| Q8 Recent replies | 875.5 | 17.7 |
+| Q9 Recent messages by friends or friends of friends | 2,145.4 | 344.3 |
+| Q10 Friend recommendation | 1,277.6 | 460.3 |
+| Q11 Job referral | 34.6 | 17.3 |
+| Q12 Expert search | 552.2 | 460.1 |
+| Q13 Single shortest path | 0.3 | 6.1 |
+| Q14 Trusted connection paths | 557.4 | 297.9 |
 
-FalkorDB is faster on Q4 and Q13. It is slower on the other twelve: 1.2–2.8× on Q1, Q5, Q6, Q10, Q11 and Q12, 5–11× on Q2, Q3, Q7, Q9 and Q14, and 48× on Q8. The Q13 and Q14 benchmark pair are direct friends, so both queries time a single-edge path. On the 160 shortest paths between persons 933 and 4598 (distance 4), FalkorDB's Q14 takes about 4.5 s. Ladybug's unrolled Q14 runs out of buffer-pool memory on that pair.
+FalkorDB is faster on Q4 and Q13. It is slower on the other twelve: 1.2–2.8× on Q1, Q5, Q6, Q10, Q11, Q12 and Q14, 5–11× on Q2, Q3, Q7 and Q9, and 49× on Q8. The Q13 and Q14 benchmark pair are direct friends, so both queries time a single-edge path. On the 160 shortest paths between persons 933 and 4598 (distance 4), Q14 takes about 4.5 s on both engines.
