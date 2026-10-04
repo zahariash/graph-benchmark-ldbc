@@ -9,12 +9,8 @@ from correctness.harness import assert_complex, complex_params
 
 DB_PATH = Path(__file__).with_name("ldbc_snb_sf1.lbdb")
 
-UNION_ORDER = "ORDER BY/LIMIT after UNION ALL applies to the last branch only, so all rows of the other branch come back"
 KNOWN_FAILURES = {
     "Q1": ("COLLECT() over only nulls returns NULL instead of an empty list", AssertionError),
-    "Q2": (UNION_ORDER, AssertionError),
-    "Q8": (UNION_ORDER, AssertionError),
-    "Q9": (UNION_ORDER, AssertionError),
 }
 # The unrolled Q14 chain multiplies the reply matches of every path edge before counting them
 PATH_FAILURES = {
