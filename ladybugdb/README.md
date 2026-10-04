@@ -73,3 +73,21 @@ uv run --frozen pytest correctness_query.py -rx
 ```
 
 All checks pass.
+
+## LDBC Interactive complex queries
+
+`query_complex14.py` holds the official LDBC SNB Interactive v1 complex queries Q1–Q14, adapted to the Ladybug schema and dialect (see its docstring). `benchmark_complex14.py` times them, using either the pytest-benchmark flags above or its own `main()`.
+
+`correctness_complex14.py` compares every result with the expected result computed from the CSVs by [`correctness/complex14.py`](../correctness/complex14.py). It also runs Q13 and Q14 on three pairs at `knows` distance 2, 3 and 4:
+
+```sh
+uv run --frozen pytest correctness_complex14.py -rx
+```
+
+Ten of the 14 queries pass. The known failures are:
+
+- **Q2, Q8, Q9:** the query text applies `ORDER BY ... LIMIT 20` after `UNION ALL`, which sorts and limits only the last branch. For example, Q2 returns all 10,378 matching posts unsorted plus the 20 latest comments, instead of the 20 latest messages.
+- **Q1:** `COLLECT()` over only nulls returns NULL instead of an empty list, for friends without a university.
+- **Q14 at distance 4:** the unrolled chain runs four `OPTIONAL MATCH` clauses per path edge, and their matches multiply before they are counted, so the 160-path pair exhausts the buffer pool.
+
+Benchmark results for these queries, measured next to FalkorDB on the same machine, are in the [FalkorDB README](../falkordb/README.md#results-1).

@@ -101,6 +101,10 @@ each of the 30 queries run in the benchmark.
 
 Each engine directory also has a `correctness_query.py` that compares full query results, including the 30 benchmark queries expanded to complete result sets, with expected results computed directly from the CSVs. Neo4j, Kuzu and Ladybug pass every check, and all 30 benchmark queries pass on every engine. See [correctness/README.md](correctness/README.md) for the design, how to run it and the known failures in FalkorDB and lance-graph.
 
+## LDBC Interactive complex queries
+
+FalkorDB and Ladybug also run the official LDBC SNB Interactive v1 complex queries Q1–Q14 (`query_complex14.py`). Their results are checked against expected results computed from the CSVs ([correctness/README.md](correctness/README.md#ldbc-interactive-complex-queries)). FalkorDB passes all 14 queries after workarounds for several 6.0.1 planner bugs. Ladybug fails Q1, Q2, Q8 and Q9. See the [FalkorDB README](falkordb/README.md#ldbc-interactive-complex-queries) for timings of both engines on the same machine.
+
 ## High-level results
 
 Latest Ladybug measurements: **2026-09-30** (other engines: **2026-09-03**), on an Apple M5 with 10 logical CPUs and 24 GiB RAM, running macOS 26.6.2 and Python 3.13.14. Each engine has a completed 30-query suite, with all assertions passing and at least five measured rounds per query.
