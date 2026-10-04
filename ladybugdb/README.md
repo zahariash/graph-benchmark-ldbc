@@ -84,9 +84,10 @@ All checks pass.
 uv run --frozen pytest correctness_complex14.py -rx
 ```
 
-13 of the 14 queries pass. Q2, Q8 and Q9 match a Message through a relationship type alternation such as `[:postHasCreator|commentHasCreator]`, as the FalkorDB port does. The original `UNION ALL` branches applied `ORDER BY ... LIMIT 20` to the last branch only. The known failures are:
+All 14 queries and all six extra path checks pass. Three queries differ from the PR #17 versions so that they return the official results, matching the FalkorDB port:
 
-- **Q1:** `COLLECT()` over only nulls returns NULL instead of an empty list, for friends without a university.
-- **Q14 at distance 4:** the unrolled chain runs four `OPTIONAL MATCH` clauses per path edge, and their matches multiply before they are counted, so the 160-path pair exhausts the buffer pool.
+- **Q2, Q8, Q9** match a Message through a relationship type alternation such as `[:postHasCreator|commentHasCreator]`. The original `UNION ALL` branches applied `ORDER BY ... LIMIT 20` to the last branch only.
+- **Q1** wraps the university and company lists in `COALESCE(..., [])`, because Ladybug's `COLLECT()` over only nulls returns NULL instead of an empty list.
+- **Q14** is a single statement using `* ALL SHORTEST`. It collects the replies between the persons on the paths once and sums them per path edge. The original unrolled chain multiplied the reply matches of every edge and exhausted the buffer pool on a 4-hop pair.
 
 Benchmark results for these queries, measured next to FalkorDB on the same machine, are in the [FalkorDB README](../falkordb/README.md#results-1).

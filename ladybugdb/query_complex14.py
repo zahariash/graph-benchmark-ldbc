@@ -37,6 +37,8 @@ Schema adaptations (data-model differences, unavoidable):
   omits ``friendEmails``/``friendLanguages``; the ``[name, year, place]``
   university/company lists are returned as structs (Ladybug lists must be
   homogeneous), with the official ``CASE ... WHEN null`` null-row shape kept.
+  ``COLLECT()`` over only nulls returns NULL here, so both lists are wrapped in
+  ``COALESCE(..., [])`` to return the official empty list.
 - ``Comment`` has no ``imageFile`` property, so Q7 resolves the message text
   per kind before the unified pipeline (``COALESCE(content, imageFile)`` for
   posts, ``content`` for comments); comments always carry content here.
@@ -50,11 +52,10 @@ Dialect adaptations (Ladybug openCypher subset, same clause shape):
 - D4 list comprehension ``size([p IN posts WHERE ...])`` -> ``UNWIND`` +
   ``OPTIONAL MATCH`` + ``COUNT(DISTINCT CASE WHEN ...)`` in the same single
   statement (list comprehensions do not exist).
-- D5 ``allShortestPaths()`` / ``reduce()`` do not exist -> Q14 runs two
-  statements: (1) shortest length via ``OPTIONAL MATCH ... SHORTEST`` +
-  ``CASE WHEN ... IS NULL`` (official null shape kept); (2) ONE
-  enumeration-plus-weighting statement (unrolled L-hop chain, per-edge reply
-  counts via ``COUNT(DISTINCT ...)`` inside the DB, no per-edge round trips).
+- D5 ``allShortestPaths()`` -> ``* ALL SHORTEST``; ``reduce()`` does not exist,
+  and a list lambda over a collected list fails to bind, so Q14 (as in the
+  FalkorDB port) collects the replies between the persons on any shortest path
+  once, unwinds them per path edge and sums the weights with ``SUM``.
 - D6 ``WITH ... ORDER BY`` requires a ``LIMIT`` -> ``LIMIT 1000000000``
   (no-op) where the official query orders without limiting.
 - D7 ``CASE path IS NULL`` -> ``OPTIONAL MATCH`` + ``CASE WHEN e IS NULL``.
@@ -112,15 +113,6 @@ def _execute(conn: Connection, idx: int, query: str, params: dict[str, Any] | No
     return result
 
 
-def _get(conn: Connection, query: str, params: dict[str, Any]):
-    """Lightweight fetch (list of rows) for the Q14 length probe."""
-    response = conn.execute(query, params)
-    try:
-        return response.get_all()
-    finally:
-        response.close()
-
-
 # ---------------------------------------------------------------------------
 # Q1. Transitive friends with certain name (official: complex-1).
 # ---------------------------------------------------------------------------
@@ -160,8 +152,8 @@ def run_query1(conn: Connection, personId: int | None = None, firstName: str | N
                distance AS distanceFromPerson, friend.birthday AS friendBirthday,
                friend.creationDate AS friendCreationDate, friend.gender AS friendGender,
                friend.browserUsed AS friendBrowserUsed, friend.locationIP AS friendLocationIp,
-               friendCity.name AS friendCityName, unis AS friendUniversities,
-               companies AS friendCompanies
+               friendCity.name AS friendCityName, COALESCE(unis, []) AS friendUniversities,
+               COALESCE(companies, []) AS friendCompanies
         ORDER BY distanceFromPerson ASC, friendLastName ASC, friendId ASC
         LIMIT 20;
     """
@@ -620,83 +612,41 @@ def run_query14(conn: Connection, person1Id: int | None = None, person2Id: int |
     """Q14. All shortest knows-paths between $person1Id and $person2Id, weighted.
 
     Official shape: allShortestPaths + per-edge reply weights (1.0 post,
-    0.5 comment, both directions) + ORDER BY weight DESC. allShortestPaths /
-    reduce() do not exist in this dialect, so: (1) one length probe (same
-    null-shape as Q13); (2) ONE enumeration-plus-weighting statement with an
-    unrolled L-hop chain and DB-side COUNT(DISTINCT ...) weights.
+    0.5 comment, both directions) + ORDER BY weight DESC. Each reply hop is
+    its own OPTIONAL MATCH; the zero-weight entry keeps the path edges when
+    no replies are found (COLLECT() of only nulls is NULL here).
     """
     p = PARAMS[14].copy()
     if person1Id is not None:
         p["person1Id"] = person1Id
     if person2Id is not None:
         p["person2Id"] = person2Id
-    x, y = p["person1Id"], p["person2Id"]
-
-    rows = _get(
-        conn,
-        "OPTIONAL MATCH (a:Person {ID: $person1Id})-[e:knows* SHORTEST]-(b:Person {ID: $person2Id})"
-        " RETURN CASE WHEN e IS NULL THEN -1 ELSE LENGTH(e) END AS shortestPathLength;",
-        {"person1Id": x, "person2Id": y, "dummy": 0},
-    )
-    length = rows[0][0] if rows else -1
-    print(f"\nQuery 14  parameters: $person1Id={x!r}, $person2Id={y!r}")
-    if length < 0:
-        print("Query 14: no knows-path between the two persons.")
-        return rows
-    print(f"Query 14: shortest length = {length}; enumerating + weighting in one statement ...")
-
-    nodes = ["a"] + [f"n{i}" for i in range(1, length)] + ["b"]
-    chain = "(a:Person {ID: $person1Id})"
-    for i in range(length):
-        nxt = nodes[i + 1]
-        # intermediate nodes are plain :Person; endpoint carries the ID filter
-        if i == length - 1:
-            chain += f"-[:knows]-({nxt}:Person {{ID: $person2Id}})"
-        else:
-            chain += f"-[:knows]-({nxt}:Person)"
-    conds = []
-    if length > 1:
-        mids = nodes[1:-1]
-        for m in mids:
-            conds.append(f"{m}.ID <> a.ID AND {m}.ID <> b.ID")
-        for i, m1 in enumerate(mids):
-            for m2 in mids[i + 1:]:
-                conds.append(f"{m1}.ID <> {m2}.ID")
-    match = f"MATCH {chain}"
-    if conds:
-        match += " WHERE " + " AND ".join(conds)
-
-    optionals = []
-    counts = []
-    for i in range(length):
-        u, v = nodes[i], nodes[i + 1]
-        optionals.append(
-            f"OPTIONAL MATCH (cpa{i}:Comment)-[:commentHasCreator]->({u}),"
-            f" (cpa{i})-[:replyOfPost]->(ppa{i}:Post)-[:postHasCreator]->({v})"
-        )
-        optionals.append(
-            f"OPTIONAL MATCH (cpb{i}:Comment)-[:commentHasCreator]->({v}),"
-            f" (cpb{i})-[:replyOfPost]->(ppb{i}:Post)-[:postHasCreator]->({u})"
-        )
-        optionals.append(
-            f"OPTIONAL MATCH (cca{i}:Comment)-[:commentHasCreator]->({u}),"
-            f" (cca{i})-[:replyOfComment]->(pca{i}:Comment)-[:commentHasCreator]->({v})"
-        )
-        optionals.append(
-            f"OPTIONAL MATCH (ccb{i}:Comment)-[:commentHasCreator]->({v}),"
-            f" (ccb{i})-[:replyOfComment]->(pcb{i}:Comment)-[:commentHasCreator]->({u})"
-        )
-        counts.append(f"COUNT(DISTINCT cpa{i}) + COUNT(DISTINCT cpb{i})")
-        counts.append(f"0.5 * (COUNT(DISTINCT cca{i}) + COUNT(DISTINCT ccb{i}))")
-    path_ids = "[" + ", ".join(f"{n}.ID" for n in nodes) + "]"
-    weight = " + ".join(counts) if counts else "0.0"
-    query = (
-        f"{match}\n"
-        + "\n".join(optionals)
-        + f"\nWITH {path_ids} AS personIdsInPath, ({weight}) AS pathWeight"
-        + "\nRETURN personIdsInPath, pathWeight ORDER BY pathWeight DESC;"
-    )
-    return _execute(conn, 14, query, {"person1Id": x, "person2Id": y})
+    query = """
+        MATCH path = (person1:Person {ID: $person1Id})-[:knows* ALL SHORTEST]-(person2:Person {ID: $person2Id})
+        WITH COLLECT(properties(nodes(path), 'ID')) AS paths
+        UNWIND paths AS pathIds
+        UNWIND pathIds AS personId
+        WITH paths, COLLECT(DISTINCT personId) AS people
+        UNWIND people AS aId
+        MATCH (a:Person {ID: aId})
+        OPTIONAL MATCH (a)<-[:commentHasCreator]-(comment:Comment)
+        OPTIONAL MATCH (comment)-[reply:replyOfPost|replyOfComment]->(parent)
+        OPTIONAL MATCH (parent)-[:postHasCreator|commentHasCreator]->(b:Person)
+        WITH paths, people, a, b, reply
+        WITH paths, COLLECT(CASE WHEN b.ID IN people
+                                 THEN {a: a.ID, b: b.ID,
+                                       w: CASE label(reply) WHEN 'replyOfPost' THEN 1.0 ELSE 0.5 END} END) AS replies
+        UNWIND paths AS personIdsInPath
+        UNWIND range(1, size(personIdsInPath) - 1) AS i
+        WITH personIdsInPath, personIdsInPath[i] AS u, personIdsInPath[i + 1] AS v, replies
+        UNWIND COALESCE(replies, []) + [{a: 0, b: 0, w: 0.0}] AS r
+        WITH personIdsInPath, u, v,
+             SUM(CASE WHEN (r.a = u AND r.b = v) OR (r.a = v AND r.b = u) THEN r.w ELSE 0.0 END) AS edgeWeight
+        WITH personIdsInPath, SUM(edgeWeight) AS pathWeight
+        RETURN personIdsInPath, pathWeight
+        ORDER BY pathWeight DESC;
+    """
+    return _execute(conn, 14, query, p)
 
 
 QUERY_FUNCTIONS: dict[int, Callable[..., object]] = {
