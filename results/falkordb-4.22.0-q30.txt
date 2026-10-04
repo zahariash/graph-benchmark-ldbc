@@ -1,0 +1,21 @@
+FalkorDB 4.22.0, Q30 (excluded from the pytest-benchmark run)
+AMD Ryzen 9 6900HS, 16 logical CPUs, 30 GiB RAM, Linux 7.1.3, Python 3.14.0
+
+== Verbatim Q30 (falkordb/query.py run_query30), single client-timed run, 2026-10-03 ==
+        MATCH (c:Comment)-[:commentHasCreator]->(creator:Person),
+              (c)-[:replyOfPost]->(post:Post)-[:postHasCreator]->(creator)
+        RETURN COUNT(DISTINCT c.ID) > 0 AS has_self_reply;
+
+[{'has_self_reply': True}]
+Q30 single run: 1280.862 s
+
+== Equivalent rewrite, 5 client-timed runs ==
+Rewritten Q30 (not used in the benchmark):
+        MATCH (c:Comment)-[:replyOfPost]->(post:Post)-[:postHasCreator]->(creator:Person)
+        WITH c, creator
+        MATCH (c)-[:commentHasCreator]->(creator)
+        RETURN COUNT(DISTINCT c.ID) > 0 AS has_self_reply;
+    
+result: [{'has_self_reply': True}]
+runs (s): 0.172, 0.168, 0.170, 0.170, 0.169
+mean: 0.170 s

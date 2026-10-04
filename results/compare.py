@@ -124,7 +124,10 @@ def plot_results(
 
 def main() -> None:
     results_dir = Path(__file__).resolve().parent
-    files = sorted(results_dir.glob("*.txt"))
+    # FalkorDB was measured on different hardware than the other engines
+    files = sorted(
+        path for path in results_dir.glob("*.txt") if not path.stem.startswith("falkordb")
+    )
     if not files:
         raise SystemExit("No .txt files found in results directory.")
 

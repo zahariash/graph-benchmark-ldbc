@@ -77,6 +77,9 @@ def _find_result_files(results_dir: Path) -> list[Path]:
             continue
         if path.suffix in {".py", ".png"}:
             continue
+        # FalkorDB was measured on different hardware than the other engines
+        if path.stem.startswith("falkordb"):
+            continue
         files.append(path)
     return files
 

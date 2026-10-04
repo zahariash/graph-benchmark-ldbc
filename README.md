@@ -14,6 +14,7 @@ The following systems are compared:
 - Kuzu (now archived)
 - Ladybug
 - lance-graph
+- FalkorDB
 
 ## Setup
 
@@ -127,7 +128,7 @@ uv run --frozen pytest benchmark_query.py \
   --benchmark-sort=fullname
 ```
 
-The runs use pytest-benchmark 5.2.3. Five rounds is a minimum, not an exact count. Query result conversion and printing remain inside the timed functions; calibration is enabled and warmup is disabled. All four graphs were verified to contain 3,181,724 nodes and 17,256,038 relationships, with expected indexes ready before timing.
+The runs use pytest-benchmark 5.2.3. Five rounds is a minimum, not an exact count. Query result conversion and printing remain inside the timed functions; calibration is enabled and warmup is disabled. All four graphs in the table below were verified to contain 3,181,724 nodes and 17,256,038 relationships, with expected indexes ready before timing.
 
 ### Mean query latency
 
@@ -169,3 +170,9 @@ Times are in milliseconds. Parenthesized ratios are Neo4j mean / engine mean; va
 Latest CLI outputs: [Neo4j](results/neo4j-2025.12.1.txt), [Kuzu](results/kuzu-0.11.3.txt), [Ladybug 0.21.1](results/ladybug-0.21.1.txt), [Lance Graph](results/lance-graph-0.5.4.txt).
 
 Previous Ladybug CLI outputs: [0.21.0 archive](results/archived/ladybug-0.21.0.txt), [0.20.4 archive](results/archived/ladybug-0.20.4.txt), [0.20.2 archive](results/archived/ladybug-0.20.2.txt).
+
+### FalkorDB
+
+FalkorDB 4.22.0 was measured on **2026-10-03** on a different machine (AMD Ryzen 9 6900HS, 16 logical CPUs, 30 GiB RAM, Linux, Python 3.14.0), so it is not included in the table above. It runs the same 30 Cypher queries as Neo4j, unmodified, with ID indexes plus seven secondary range indexes similar to Ladybug's ART indexes. Q1–Q29 passed their assertions with the benchmark settings above. Apart from Q12 (8.1 s) and Q16 (105 ms), every query averages under 17 ms. Q30 is excluded from the timed run because a single execution takes 1,281 s (21.3 min). See the [FalkorDB README](falkordb/README.md#results) for details and the planner behaviour behind the slow queries.
+
+[FalkorDB 4.22.0 CLI output](results/falkordb-4.22.0.txt) · [Raw benchmark JSON](results/falkordb-4.22.0.json) · [Q30 runs](results/falkordb-4.22.0-q30.txt)
