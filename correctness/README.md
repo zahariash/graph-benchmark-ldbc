@@ -70,12 +70,32 @@ pytest reports 62 tests per engine: the 61 checks and `test_graph_totals`. `-rx`
 
 All 30 benchmark queries (B01–B30) pass on every engine.
 
+## LDBC Interactive complex queries
+
+`complex14.py` computes the expected results of the LDBC SNB Interactive v1 complex queries Q1–Q14 from the CSVs for the parameters in its `PARAMS`, following the official query semantics. Shortest paths use a breadth-first search, and Message is the union of Post and Comment. Each oracle returns the final rows after `ORDER BY` and `LIMIT`. `normalize_row` maps engine values onto the oracle's: dates become the CSV strings, lists, maps and structs become tuples, and lists built by `collect()` are sorted. Rows are compared in order, except for Q14, whose ties on `pathWeight` may come back in any order. `PATH_PAIRS` adds Q13/Q14 checks at `knows` distance 2, 3 and 4, because the benchmark pair are direct friends.
+
+Run it from an engine directory that has `correctness_complex14.py`:
+
+```sh
+cd falkordb && uv run --frozen pytest correctness_complex14.py -rx
+cd ladybugdb && uv run --frozen pytest correctness_complex14.py -rx
+```
+
+| Engine | Pass | Known failures |
+| --- | ---: | --- |
+| FalkorDB 6.0.1 | 21 | – |
+| Ladybug 0.21.1 | 40 | – |
+
+Pass counts pytest tests: the 14 queries, the six path checks and, for FalkorDB, `test_params`, which checks that its query parameters match the oracle's. Ladybug runs them at the default thread count and at 1 thread.
+
 ## Layout
 
 - `oracle.py` – CSV loading and the join helpers that express expected results.
 - `checks.py` – canonical Cypher and oracle for each check.
+- `complex14.py` – oracles and result normalisation for the LDBC Interactive complex queries Q1–Q14.
 - `harness.py` – expected results, comparison and pytest parameters.
 - `<engine>/correctness_query.py` – connection, query execution, `OVERRIDES` and `KNOWN_FAILURES` for one engine.
+- `<engine>/correctness_complex14.py` – the same for the complex queries, for FalkorDB and Ladybug.
 
 `pyproject.toml` adds the repository root to pytest's `pythonpath` so the engine directories can import `correctness`.
 

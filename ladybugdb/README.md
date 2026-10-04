@@ -73,3 +73,21 @@ uv run --frozen pytest correctness_query.py -rx
 ```
 
 All checks pass.
+
+## LDBC Interactive complex queries
+
+`query_complex14.py` holds the official LDBC SNB Interactive v1 complex queries Q1–Q14, adapted to the Ladybug schema and dialect (see its docstring). `benchmark_complex14.py` times them, using either the pytest-benchmark flags above or its own `main()`.
+
+`correctness_complex14.py` compares every result with the expected result computed from the CSVs by [`correctness/complex14.py`](../correctness/complex14.py). It also runs Q13 and Q14 on three pairs at `knows` distance 2, 3 and 4:
+
+```sh
+uv run --frozen pytest correctness_complex14.py -rx
+```
+
+The tests run twice, at the default thread count and at 1 thread, because some 0.21.x bugs only show at low thread counts. All 14 queries and all six extra path checks pass in both. Five queries differ from the PR #17 versions so that they return the official results, matching the FalkorDB port:
+
+- **Q2, Q8, Q9** match a Message through a relationship type alternation such as `[:postHasCreator|commentHasCreator]`. The original `UNION ALL` branches applied `ORDER BY ... LIMIT 20` to the last branch only.
+- **Q1** wraps the university and company lists in `COALESCE(..., [])`, because Ladybug's `COLLECT()` over only nulls returns NULL instead of an empty list ([#1090](https://github.com/LadybugDB/ladybug/issues/1090)).
+- **Q14** is a single statement using `* ALL SHORTEST`. It collects the replies between the persons on the paths once and sums them per path edge. The original unrolled chain multiplied the reply matches of every edge and exhausted the buffer pool on a 4-hop pair. The reply pattern is a single `OPTIONAL MATCH`: in 0.21.x an `OPTIONAL MATCH` that follows a null-producing one returns wrong rows at 1–4 threads, which made the 4-hop weights wrong at 1 thread.
+
+Benchmark results for these queries, measured next to FalkorDB on the same machine, are in the [FalkorDB README](../falkordb/README.md#results-1).
