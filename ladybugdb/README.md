@@ -84,7 +84,7 @@ All checks pass.
 uv run --frozen pytest correctness_complex14.py -rx
 ```
 
-All 14 queries and all six extra path checks pass. Three queries differ from the PR #17 versions so that they return the official results, matching the FalkorDB port:
+All 14 queries and all six extra path checks pass. Five queries differ from the PR #17 versions so that they return the official results, matching the FalkorDB port:
 
 - **Q2, Q8, Q9** match a Message through a relationship type alternation such as `[:postHasCreator|commentHasCreator]`. The original `UNION ALL` branches applied `ORDER BY ... LIMIT 20` to the last branch only.
 - **Q1** wraps the university and company lists in `COALESCE(..., [])`, because Ladybug's `COLLECT()` over only nulls returns NULL instead of an empty list.
