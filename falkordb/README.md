@@ -98,7 +98,7 @@ The previous run used FalkorDB 4.22.0, which has the C engine, on the same machi
 
 - The graph has no `Message` label, so a Message edge becomes a type alternation such as `[:postHasCreator|commentHasCreator]` to an unlabelled node.
 - Dates are ISO strings, which order the same way as the timestamps they encode.
-- Several clauses are split differently to avoid FalkorDB 6.0.1 planner bugs. A `WHERE` after `UNWIND`, `LIMIT` or an aggregating `WITH` can run before its variable is bound and drop every row ([#2557](https://github.com/FalkorDB/FalkorDB/issues/2557), [#3082](https://github.com/FalkorDB/FalkorDB/issues/3082), [#2556](https://github.com/FalkorDB/FalkorDB/issues/2556)). An `OPTIONAL MATCH` can be anchored on an unbound variable ([#3037](https://github.com/FalkorDB/FalkorDB/issues/3037)). A variable-length traversal followed by a location hop starts from every city instead of the indexed person. Without these workarounds Q1 and Q9 return no rows, Q5 counts zero posts per forum, Q6 fails with a type error, Q3 takes 73 s and Q10 times out.
+- Several clauses are split differently to avoid FalkorDB 6.0.1 planner bugs. A `WHERE` after `UNWIND`, `LIMIT` or an aggregating `WITH` can run before its variable is bound and drop every row ([#2557](https://github.com/FalkorDB/FalkorDB/issues/2557), [#3082](https://github.com/FalkorDB/FalkorDB/issues/3082), [#2556](https://github.com/FalkorDB/FalkorDB/issues/2556)). An `OPTIONAL MATCH` can be anchored on an unbound variable ([#3037](https://github.com/FalkorDB/FalkorDB/issues/3037)). A variable name reused after an aggregating `WITH` reads the old variable ([#3004](https://github.com/FalkorDB/FalkorDB/issues/3004)). A `UNION` inside a correlated `CALL {}` returns no rows ([#3025](https://github.com/FalkorDB/FalkorDB/issues/3025)), so no query uses one. A variable-length traversal followed by a location hop starts from every city instead of the indexed person ([#2558](https://github.com/FalkorDB/FalkorDB/issues/2558), closed but still present in 6.0.1). Without these workarounds Q1 and Q9 return no rows, Q5 counts zero posts per forum, Q6 fails with a type error, Q3 takes 73 s and Q10 times out.
 
 Run all 14 queries, or a subset:
 
@@ -123,19 +123,19 @@ Measured on **2026-10-04** on the machine and FalkorDB setup described above, wi
 
 | Query | FalkorDB 6.0.1 mean (ms) | Ladybug 0.21.1 mean (ms) |
 | --- | ---: | ---: |
-| Q1 Transitive friends with a certain name | 164.9 | 72.3 |
-| Q2 Recent messages by your friends | 849.2 | 78.5 |
-| Q3 Friends and friends of friends that have been to given countries | 2,584.7 | 503.3 |
-| Q4 New topics | 120.4 | 217.3 |
-| Q5 New groups | 2,588.1 | 943.2 |
-| Q6 Tag co-occurrence | 907.7 | 671.2 |
-| Q7 Recent likers | 550.7 | 77.5 |
-| Q8 Recent replies | 875.5 | 17.7 |
-| Q9 Recent messages by friends or friends of friends | 2,145.4 | 344.3 |
-| Q10 Friend recommendation | 1,277.6 | 460.3 |
-| Q11 Job referral | 34.6 | 17.3 |
-| Q12 Expert search | 552.2 | 460.1 |
-| Q13 Single shortest path | 0.3 | 6.1 |
-| Q14 Trusted connection paths | 557.4 | 297.9 |
+| Q1 Transitive friends with a certain name | 164.9 | 72.8 |
+| Q2 Recent messages by your friends | 849.2 | 75.3 |
+| Q3 Friends and friends of friends that have been to given countries | 2,584.7 | 485.5 |
+| Q4 New topics | 120.4 | 211.8 |
+| Q5 New groups | 2,588.1 | 892.8 |
+| Q6 Tag co-occurrence | 907.7 | 656.3 |
+| Q7 Recent likers | 550.7 | 75.3 |
+| Q8 Recent replies | 875.5 | 17.8 |
+| Q9 Recent messages by friends or friends of friends | 2,145.4 | 336.7 |
+| Q10 Friend recommendation | 1,277.6 | 454.0 |
+| Q11 Job referral | 34.6 | 16.6 |
+| Q12 Expert search | 552.2 | 421.8 |
+| Q13 Single shortest path | 0.3 | 5.8 |
+| Q14 Trusted connection paths | 557.4 | 224.6 |
 
-FalkorDB is faster on Q4 and Q13. It is slower on the other twelve: 1.2–2.8× on Q1, Q5, Q6, Q10, Q11, Q12 and Q14, 5–11× on Q2, Q3, Q7 and Q9, and 49× on Q8. The Q13 and Q14 benchmark pair are direct friends, so both queries time a single-edge path. On the 160 shortest paths between persons 933 and 4598 (distance 4), Q14 takes about 4.5 s on both engines.
+FalkorDB is faster on Q4 and Q13. It is slower on the other twelve: 1.3–2.9× on Q1, Q5, Q6, Q10, Q11, Q12 and Q14, 5–12× on Q2, Q3, Q7 and Q9, and 49× on Q8. The Q13 and Q14 benchmark pair are direct friends, so both queries time a single-edge path. On the 160 shortest paths between persons 933 and 4598 (distance 4), Q14 takes about 4.5 s on FalkorDB and 3.7 s on Ladybug.

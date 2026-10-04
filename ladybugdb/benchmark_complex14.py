@@ -11,8 +11,9 @@ Usage (run from this directory with the project venv)::
 Notes:
 - The database is opened READ-ONLY; per-round result printing is suppressed
   during measurement, so timings reflect query execution only.
-- Prepared-statement caching stays enabled except around Q1/Q6/Q10/Q12,
-  which segfault on repeated cached execution (LadybugDB/ladybug#906).
+- Prepared-statement caching stays enabled. Queries listed in
+  ``UNCACHED_QUERIES`` run with it disabled; the list is empty since the
+  repeated-execution segfault (LadybugDB/ladybug#906) was fixed.
 - Raw timings are also saved as JSON + markdown under ``../results/``.
 """
 
