@@ -37,8 +37,9 @@ Schema adaptations (data-model differences, unavoidable):
   omits ``friendEmails``/``friendLanguages``; the ``[name, year, place]``
   university/company lists are returned as structs (Ladybug lists must be
   homogeneous), with the official ``CASE ... WHEN null`` null-row shape kept.
-  ``COLLECT()`` over only nulls returns NULL here, so both lists are wrapped in
-  ``COALESCE(..., [])`` to return the official empty list.
+  ``COLLECT()`` over only nulls returns NULL here
+  (https://github.com/LadybugDB/ladybug/issues/1090), so both lists are wrapped
+  in ``COALESCE(..., [])`` to return the official empty list.
 - ``Comment`` has no ``imageFile`` property, so Q7 resolves the message text
   per kind before the unified pipeline (``COALESCE(content, imageFile)`` for
   posts, ``content`` for comments); comments always carry content here.
@@ -612,9 +613,11 @@ def run_query14(conn: Connection, person1Id: int | None = None, person2Id: int |
     """Q14. All shortest knows-paths between $person1Id and $person2Id, weighted.
 
     Official shape: allShortestPaths + per-edge reply weights (1.0 post,
-    0.5 comment, both directions) + ORDER BY weight DESC. Each reply hop is
-    its own OPTIONAL MATCH; the zero-weight entry keeps the path edges when
-    no replies are found (COLLECT() of only nulls is NULL here).
+    0.5 comment, both directions) + ORDER BY weight DESC. The reply pattern
+    is one OPTIONAL MATCH: an OPTIONAL MATCH after a null-producing one
+    returns wrong rows at 1-4 threads in 0.21.x. The zero-weight entry keeps
+    the path edges when no replies are found, because COLLECT() of only nulls
+    is NULL here (https://github.com/LadybugDB/ladybug/issues/1090).
     """
     p = PARAMS[14].copy()
     if person1Id is not None:
@@ -629,9 +632,8 @@ def run_query14(conn: Connection, person1Id: int | None = None, person2Id: int |
         WITH paths, COLLECT(DISTINCT personId) AS people
         UNWIND people AS aId
         MATCH (a:Person {ID: aId})
-        OPTIONAL MATCH (a)<-[:commentHasCreator]-(comment:Comment)
-        OPTIONAL MATCH (comment)-[reply:replyOfPost|replyOfComment]->(parent)
-        OPTIONAL MATCH (parent)-[:postHasCreator|commentHasCreator]->(b:Person)
+        OPTIONAL MATCH (a)<-[:commentHasCreator]-(:Comment)-[reply:replyOfPost|replyOfComment]->()
+                       -[:postHasCreator|commentHasCreator]->(b:Person)
         WITH paths, people, a, b, reply
         WITH paths, COLLECT(CASE WHEN b.ID IN people
                                  THEN {a: a.ID, b: b.ID,

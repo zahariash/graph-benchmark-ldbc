@@ -12,10 +12,11 @@ DB_PATH = Path(__file__).with_name("ldbc_snb_sf1.lbdb")
 KNOWN_FAILURES = {}
 
 
-@pytest.fixture(scope="session")
-def connection():
+# 0 = default thread count; some 0.21.x bugs only show at low thread counts
+@pytest.fixture(scope="session", params=[0, 1], ids=["default-threads", "1-thread"])
+def connection(request):
     db = lb.Database(str(DB_PATH), read_only=True)
-    yield lb.Connection(db)
+    yield lb.Connection(db, num_threads=request.param)
 
 
 @pytest.mark.parametrize("idx", complex_params(KNOWN_FAILURES))

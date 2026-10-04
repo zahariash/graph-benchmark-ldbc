@@ -14,7 +14,8 @@ Schema:
   and ``REPLY_OF`` on a Message become type alternations such as
   ``[:postHasCreator|commentHasCreator]`` to an unlabelled node; each type
   connects only Posts or only Comments, so the alternation matches exactly the
-  Message edges.
+  Message edges. A UNION inside a correlated CALL {} returns no rows here
+  (https://github.com/FalkorDB/FalkorDB/issues/3025).
 - Dates are stored as ``2010-10-16T12:00:00.000+0000`` strings, which order
   like the timestamps, so date parameters use the same format.
 - ``Person.email``/``Person.speaks`` are not loaded: Q1 omits
@@ -45,9 +46,16 @@ FalkorDB 6.0.1 planner workarounds (same results, different clause split):
   instead of the bound one (https://github.com/FalkorDB/FalkorDB/issues/3037):
   Q5 counts zero posts per forum. Q5 traverses from the forum and filters the
   authors in the aggregation.
+- Reusing a variable name that went out of scope at an aggregating WITH reads
+  the old variable's slot (https://github.com/FalkorDB/FalkorDB/issues/3082,
+  https://github.com/FalkorDB/FalkorDB/issues/3004), so Q3 names the friend's
+  city friendCity and Q5 names the post's creator author.
 - A variable-length knows traversal followed by a location hop in the same MATCH
   starts from every city instead of the indexed person (Q3: 73 s, Q10: over
-  10 minutes). Q3 and Q10 split the location hop into its own MATCH.
+  10 minutes; https://github.com/FalkorDB/FalkorDB/issues/2558, closed but still
+  present in 6.0.1). Q3 and Q10 put the location hop in its own MATCH after a
+  WITH; without the WITH it fails with "'city' not defined"
+  (https://github.com/FalkorDB/FalkorDB/issues/2972).
 """
 
 import os
