@@ -173,6 +173,6 @@ Previous Ladybug CLI outputs: [0.21.0 archive](results/archived/ladybug-0.21.0.t
 
 ### FalkorDB
 
-FalkorDB 4.22.0 was measured on **2026-10-03** on a different machine (AMD Ryzen 9 6900HS, 16 logical CPUs, 30 GiB RAM, Linux, Python 3.14.0), so it is not included in the table above. It runs the same 30 Cypher queries as Neo4j, unmodified, with ID indexes plus seven secondary range indexes similar to Ladybug's ART indexes. Q1–Q29 passed their assertions with the benchmark settings above. Apart from Q12 (8.1 s) and Q16 (105 ms), every query averages under 17 ms. Q30 is excluded from the timed run because a single execution takes 1,281 s (21.3 min). See the [FalkorDB README](falkordb/README.md#results) for details and the planner behaviour behind the slow queries.
+FalkorDB 6.0.1 was measured on **2026-10-04** on a different machine (AMD Ryzen 9 6900HS, 16 logical CPUs, 30 GiB RAM, Linux, Python 3.14.0), so it is not included in the table above. It runs the same 30 Cypher queries as Neo4j, unmodified, with ID indexes plus seven secondary range indexes similar to Ladybug's ART indexes. All 30 queries passed their assertions with the benchmark settings above. Apart from Q30 (81.6 s), every query averages under 11 ms. See the [FalkorDB README](falkordb/README.md#results) for details, including a comparison with the previous 4.22.0 run.
 
-[FalkorDB 4.22.0 CLI output](results/falkordb-4.22.0.txt) · [Raw benchmark JSON](results/falkordb-4.22.0.json) · [Q30 runs](results/falkordb-4.22.0-q30.txt)
+[FalkorDB 6.0.1 CLI output](results/falkordb-6.0.1.txt) · [Raw benchmark JSON](results/falkordb-6.0.1.json) · [FalkorDB 4.22.0 archive](results/archived/falkordb-4.22.0.txt)
