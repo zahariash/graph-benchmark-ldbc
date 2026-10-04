@@ -93,3 +93,13 @@ Legend:
   OPS: Operations Per Second, computed as 1 / Mean
 ================================= 30 passed in 28.86s =================================
 ```
+
+## Correctness checks
+
+`correctness_query.py` compares full query results with expected results computed from the CSVs (see [correctness/README.md](../correctness/README.md)). Run from this directory:
+
+```sh
+uv run --frozen pytest correctness_query.py -rx
+```
+
+Known failures: undirected `-[:R]-` patterns are evaluated as outgoing `-[:R]->` only, and `OPTIONAL MATCH`, pattern predicates and `WITH ... WHERE` are not supported. `-rx` lists each one.
