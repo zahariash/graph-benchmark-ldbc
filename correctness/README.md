@@ -65,7 +65,7 @@ pytest reports 62 tests per engine: the 61 checks and `test_graph_totals`. `-rx`
 | Neo4j 2025.12.1 | 61 | – |
 | Kuzu 0.11.3 | 61 | – |
 | Ladybug 0.21.1 | 61 | – |
-| FalkorDB 6.0.1 | 60 | M06 ([#2441](https://github.com/FalkorDB/FalkorDB/issues/2441)) |
+| FalkorDB 6.0.2 | 60 | M06 ([#2441](https://github.com/FalkorDB/FalkorDB/issues/2441)) |
 | lance-graph 0.5.4 | 49 | undirected patterns evaluated as outgoing only (M04–M06, V05, V06); unsupported `OPTIONAL MATCH` (O01–O03), pattern predicates (X01, X02) and `WITH ... WHERE` (W01); planner error (W02) |
 
 All 30 benchmark queries (B01–B30) pass on every engine.
