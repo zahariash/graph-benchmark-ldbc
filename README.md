@@ -103,7 +103,7 @@ Each engine directory also has a `correctness_query.py` that compares full query
 
 ## LDBC Interactive complex queries
 
-FalkorDB and Ladybug also run the official LDBC SNB Interactive v1 complex queries Q1–Q14 (`query_complex14.py`). Their results are checked against expected results computed from the CSVs ([correctness/README.md](correctness/README.md#ldbc-interactive-complex-queries)). Both engines pass all 14 queries. FalkorDB needs workarounds for several 6.0.1 planner bugs. See the [FalkorDB README](falkordb/README.md#ldbc-interactive-complex-queries) for timings of both engines on the same machine.
+FalkorDB and Ladybug also run the official LDBC SNB Interactive v1 complex queries Q1–Q14 (`query_complex14.py`). Their results are checked against expected results computed from the CSVs ([correctness/README.md](correctness/README.md#ldbc-interactive-complex-queries)). Both engines pass all 14 queries; on FalkorDB 6.0.2, Q12 takes more than 10 minutes. FalkorDB needs workarounds for several planner bugs found on 6.0.1. See the [FalkorDB README](falkordb/README.md#ldbc-interactive-complex-queries) for timings of both engines on the same machine.
 
 ## High-level results
 

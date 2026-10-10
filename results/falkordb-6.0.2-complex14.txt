@@ -1,0 +1,158 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.8, pytest-9.0.2, pluggy-1.6.0
+benchmark: 5.2.3 (defaults: timer=time.perf_counter disable_gc=True min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=5)
+rootdir: /home/darek/repos/137s/graph-benchmark-ldbc-complex
+configfile: pyproject.toml
+plugins: anyio-4.12.1, benchmark-5.2.3, asyncio-1.3.0, Faker-40.1.2
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 14 items
+
+benchmark_complex14.py ...........F..                                    [100%]
+Wrote benchmark data in: <_io.BufferedWriter name='../results/falkordb-6.0.2-complex14.json'>
+
+
+=================================== FAILURES ===================================
+___________________________ test_benchmark_complex12 ___________________________
+
+benchmark = <pytest_benchmark.fixture.BenchmarkFixture object at 0x7c39bedefbb0>
+graph = <falkordb.graph.Graph object at 0x7c39bee2b770>
+
+    def test_benchmark_complex12(benchmark, graph):
+>       benchmark(query.run_query12, graph)
+
+benchmark_complex14.py:59: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../.venv/lib/python3.14/site-packages/pytest_benchmark/fixture.py:184: in __call__
+    return self._raw(function_to_benchmark, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.14/site-packages/pytest_benchmark/fixture.py:216: in _raw
+    duration, iterations, loops_range = self._calibrate_timer(runner)
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.14/site-packages/pytest_benchmark/fixture.py:370: in _calibrate_timer
+    duration = runner(loops_range)
+               ^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.14/site-packages/pytest_benchmark/fixture.py:138: in runner
+    function_to_benchmark(*args, **kwargs)
+query_complex14.py:388: in run_query12
+    return _execute(graph, 12, query, PARAMS[12])
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+query_complex14.py:104: in _execute
+    result = graph.ro_query(query, params)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.14/site-packages/falkordb/graph.py:147: in ro_query
+    return self._query(q, params=params, timeout=timeout, read_only=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.14/site-packages/falkordb/graph.py:97: in _query
+    response = self.execute_command(*command)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.14/site-packages/redis/client.py:867: in execute_command
+    return self._execute_command(*args, **options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.14/site-packages/redis/client.py:889: in _execute_command
+    result = conn.retry.call_with_retry(
+../.venv/lib/python3.14/site-packages/redis/retry.py:120: in call_with_retry
+    return do()
+           ^^^^
+../.venv/lib/python3.14/site-packages/redis/client.py:890: in <lambda>
+    lambda: self._send_command_parse_response(
+../.venv/lib/python3.14/site-packages/redis/client.py:819: in _send_command_parse_response
+    return self.parse_response(conn, command_name, **options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.14/site-packages/redis/client.py:935: in parse_response
+    response = connection.read_response()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <redis.connection.Connection(host=localhost,port=6380,db=0)>
+disable_decoding = False
+
+    def read_response(
+        self,
+        disable_decoding=False,
+        *,
+        timeout: Union[float, object] = SENTINEL,
+        disconnect_on_error=True,
+        push_request=False,
+    ):
+        """Read the response from a previously sent command"""
+    
+        host_error = self._host_error()
+    
+        try:
+            if self.protocol in ["3", 3]:
+                response = self._parser.read_response(
+                    disable_decoding=disable_decoding,
+                    push_request=push_request,
+                    timeout=timeout,
+                )
+            else:
+                response = self._parser.read_response(
+                    disable_decoding=disable_decoding, timeout=timeout
+                )
+        except socket.timeout:
+            if disconnect_on_error:
+                self.disconnect()
+            raise TimeoutError(f"Timeout reading from {host_error}")
+        except OSError as e:
+            if disconnect_on_error:
+                self.disconnect()
+            raise ConnectionError(f"Error while reading from {host_error} : {e.args}")
+        except BaseException:
+            # Also by default close in case of BaseException.  A lot of code
+            # relies on this behaviour when doing Command/Response pairs.
+            # See #1128.
+            if disconnect_on_error:
+                self.disconnect()
+            raise
+    
+        if self.health_check_interval:
+            self.next_health_check = time.monotonic() + self.health_check_interval
+    
+        if isinstance(response, ResponseError):
+            try:
+>               raise response
+E               redis.exceptions.ResponseError: Query timed out
+
+../.venv/lib/python3.14/site-packages/redis/connection.py:1437: ResponseError
+----------------------------- Captured stdout call -----------------------------
+
+Query 12 {'personId': 2199023262543, 'tagClassName': 'Monarch'}:
+
+        MATCH (tag:Tag)-[:hasType|isSubclassOf*0..]->(baseTagClass:Tagclass)
+        WHERE tag.name = $tagClassName OR baseTagClass.name = $tagClassName
+        WITH collect(tag.ID) AS tags
+        MATCH (:Person {ID: $personId})-[:knows]-(friend:Person)
+              <-[:commentHasCreator]-(comment:Comment)-[:replyOfPost]->(:Post)-[:postHasTag]->(tag:Tag)
+        WHERE tag.ID IN tags
+        RETURN friend.ID AS personId, friend.firstName AS personFirstName,
+               friend.lastName AS personLastName,
+               collect(DISTINCT tag.name) AS tagNames,
+               count(DISTINCT comment) AS replyCount
+        ORDER BY replyCount DESC, personId ASC
+        LIMIT 20
+    
+
+-------------------------------------------------------------------------------------------- benchmark: 13 tests --------------------------------------------------------------------------------------------
+Name (time in ms)                   Min                   Max                  Mean             StdDev                Median                IQR            Outliers         OPS            Rounds  Iterations
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+test_benchmark_complex1         80.3988 (351.81)      89.9306 (127.05)      84.2458 (284.30)    3.2718 (69.07)       83.7970 (293.12)    4.3779 (156.34)        2;0     11.8700 (0.00)          7           1
+test_benchmark_complex10     1,083.0216 (>1000.0)  1,117.2369 (>1000.0)  1,102.4577 (>1000.0)  13.2246 (279.17)   1,104.4368 (>1000.0)  18.9394 (676.35)        2;0      0.9071 (0.00)          5           1
+test_benchmark_complex11        23.9748 (104.91)      29.9574 (42.32)       25.8314 (87.17)     1.2833 (27.09)       25.3868 (88.80)     1.7148 (61.24)         6;1     38.7126 (0.01)         30           1
+test_benchmark_complex13         0.2285 (1.0)          0.7078 (1.0)          0.2963 (1.0)       0.0474 (1.0)          0.2859 (1.0)       0.0280 (1.0)       138;119  3,374.6559 (1.0)        1465           1
+test_benchmark_complex14       216.7842 (948.61)     226.1752 (319.53)     222.7338 (751.65)    3.5897 (75.78)      223.4030 (781.47)    3.9079 (139.56)        1;0      4.4897 (0.00)          5           1
+test_benchmark_complex2        501.4451 (>1000.0)    523.8868 (740.13)     511.1238 (>1000.0)   8.1050 (171.10)     510.0272 (>1000.0)   7.4526 (266.14)        2;0      1.9565 (0.00)          5           1
+test_benchmark_complex3      1,765.6496 (>1000.0)  1,813.9824 (>1000.0)  1,795.0166 (>1000.0)  24.2726 (512.40)   1,811.6538 (>1000.0)  42.7925 (>1000.0)       1;0      0.5571 (0.00)          5           1
+test_benchmark_complex4         92.5613 (405.03)     102.7206 (145.12)      97.6663 (329.59)    4.3082 (90.95)       96.8283 (338.71)    7.4623 (266.49)        2;0     10.2390 (0.00)          5           1
+test_benchmark_complex5      2,177.9797 (>1000.0)  2,381.5761 (>1000.0)  2,302.3045 (>1000.0)  78.3654 (>1000.0)  2,323.1077 (>1000.0)  99.4708 (>1000.0)       2;0      0.4343 (0.00)          5           1
+test_benchmark_complex6        642.4074 (>1000.0)    663.3095 (937.10)     648.9327 (>1000.0)   8.8272 (186.34)     644.5483 (>1000.0)  11.6921 (417.54)        1;0      1.5410 (0.00)          5           1
+test_benchmark_complex7        330.5367 (>1000.0)    352.8157 (498.44)     339.7798 (>1000.0)  10.0754 (212.69)     334.7115 (>1000.0)  17.3896 (621.00)        1;0      2.9431 (0.00)          5           1
+test_benchmark_complex8        573.6270 (>1000.0)    584.3676 (825.57)     579.2306 (>1000.0)   4.6986 (99.19)      578.3976 (>1000.0)   8.3951 (299.80)        2;0      1.7264 (0.00)          5           1
+test_benchmark_complex9      1,740.0467 (>1000.0)  1,761.3193 (>1000.0)  1,749.2942 (>1000.0)   8.6202 (181.97)   1,747.1469 (>1000.0)  13.6901 (488.89)        2;0      0.5717 (0.00)          5           1
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Legend:
+  Outliers: 1 Standard Deviation from Mean; 1.5 IQR (InterQuartile Range) from 1st Quartile and 3rd Quartile.
+  OPS: Operations Per Second, computed as 1 / Mean
+=========================== short test summary info ============================
+FAILED benchmark_complex14.py::test_benchmark_complex12 - redis.exceptions.Re...
+=================== 1 failed, 13 passed in 87.14s (0:01:27) ====================
