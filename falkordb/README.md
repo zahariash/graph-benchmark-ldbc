@@ -4,7 +4,7 @@ This section describes how to benchmark the social network data in [FalkorDB](ht
 
 ## Setup
 
-FalkorDB runs as a server. Start it via Docker using the provided `docker-compose.yml`, which pins the image to `6.0.1`:
+FalkorDB runs as a server. Start it via Docker using the provided `docker-compose.yml`, which pins the image to `6.0.2`:
 
 ```sh
 docker compose up -d
@@ -15,7 +15,7 @@ The scripts connect with the [`falkordb`](https://pypi.org/project/falkordb/) Py
 - `FALKORDB_HOST` (optional, defaults to `localhost`)
 - `FALKORDB_PORT` (optional, defaults to `6379`; also sets the host port in `docker-compose.yml`)
 - `FALKORDB_GRAPH` (optional, defaults to `ldbc_snb_sf1`)
-- `FALKORDB_VERSION` (optional, Docker image tag, defaults to `6.0.1`)
+- `FALKORDB_VERSION` (optional, Docker image tag, defaults to `6.0.2`)
 
 ## Build graph
 
@@ -66,17 +66,21 @@ uv run --frozen pytest benchmark_query.py \
 
 ## Results
 
-Measured on **2026-10-04** on an AMD Ryzen 9 6900HS (16 logical CPUs, 30 GiB RAM) running Linux 7.1.3 and Python 3.14.0, with FalkorDB 6.0.1 in Docker started from the provided `docker-compose.yml` (`THREAD_COUNT` and `OMP_THREAD_COUNT` 16, query timeouts disabled, unlimited result set size). This is a different machine from the Apple M5 used for the other engines, so these numbers are not directly comparable with the main table.
+Measured on **2026-10-10** on an AMD Ryzen 9 6900HS (16 logical CPUs, 30 GiB RAM) running Linux 7.1.3 and Python 3.14.8, with FalkorDB 6.0.2 in Docker started from the provided `docker-compose.yml` (`THREAD_COUNT` and `OMP_THREAD_COUNT` 16, query timeouts disabled, unlimited result set size). This is a different machine from the Apple M5 used for the other engines, so these numbers are not directly comparable with the main table.
 
-[CLI output](../results/falkordb-6.0.1.txt) · [Raw benchmark JSON](../results/falkordb-6.0.1.json)
+[CLI output](../results/falkordb-6.0.2.txt) · [Raw benchmark JSON](../results/falkordb-6.0.2.json)
 
-Ingestion took 38 s for the 3,181,724 nodes, 950 s for the 17,256,038 relationships and 4 s for the secondary indexes. After loading, `GRAPH.MEMORY USAGE` reports 2.84 GB for the graph and the server's resident memory (RSS) is about 3.5 GB; Redis's allocator peak during ingestion was 3.8 GB.
+After loading, `GRAPH.MEMORY USAGE` reports 2.97 GB for the graph. 6.0.1 ingested the 3,181,724 nodes in 38 s, the 17,256,038 relationships in 950 s and the secondary indexes in 4 s; the 6.0.2 rebuild was timed only on a busy machine, so the 6.0.1 timings remain the reference.
 
-All 30 queries passed their result assertions with the benchmark settings above. Apart from Q30, every query averages under 11 ms. Q30 averages 81.6 s over five rounds: the planner starts from each `Person`, pairs all of that person's comments with all of their posts (about 447M candidate pairs) and only then checks `replyOfPost`. The query text is identical to Neo4j's for all 30 queries.
+All 30 queries passed their result assertions with the benchmark settings above. Apart from Q30, every query averages under 10 ms. Q30 averages 75.2 s over five rounds: the planner starts from each `Person`, pairs all of that person's comments with all of their posts (about 447M candidate pairs) and only then checks `replyOfPost`. The query text is identical to Neo4j's for all 30 queries.
 
-### Compared with FalkorDB 4.22.0
+### FalkorDB 6.0.1 to 6.0.2
 
-The previous run used FalkorDB 4.22.0, which has the C engine, on the same machine ([CLI output](../results/archived/falkordb-4.22.0.txt), [Q30 runs](../results/archived/falkordb-4.22.0-q30.txt)). 6.0.1 has a lower mean latency on 22 of 30 queries.
+6.0.2 and 6.0.1 ran interleaved on the same machine and graph, two rounds each, with a 10-second query timeout so Q30 did not dominate the run. Over the other 29 queries, the geometric mean of the per-query median-latency ratios is 0.93x; the two rounds disagree on the direction (0.88x and 1.08x), so apart from Q7 the versions are within noise. Q7 is the exception: 0.21 ms on 6.0.1 and 0.82 ms on 6.0.2 in both rounds. Q30 fell from 81.6 s to 75.2 s between the two published runs ([6.0.1 CLI output](../results/archived/falkordb-6.0.1.txt)). Both versions return the same results.
+
+### FalkorDB 4.22.0 to 6.0.1
+
+The run before 6.0.1 used FalkorDB 4.22.0, which has the C engine, on the same machine ([4.22.0 CLI output](../results/archived/falkordb-4.22.0.txt), [Q30 runs](../results/archived/falkordb-4.22.0-q30.txt), [6.0.1 CLI output](../results/archived/falkordb-6.0.1.txt)). 6.0.1 has a lower mean latency on 22 of 30 queries.
 
 - The three slowest 4.22.0 queries improved most. Q12 fell from 8,054 ms to 1.8 ms and Q16 from 105 ms to 7.1 ms: 6.0.1 starts both from the indexed `Place`, where 4.22.0 scanned every `Comment` or `Post`. Q30 fell from 1,281 s (a single run, excluded from the 4.22.0 suite) to 81.6 s, so it is now part of the timed suite.
 - Q2, Q3, Q13, Q28 and Q29 got slower, from 0.27–2.1 ms to 6.2–8.5 ms. In Q2 and Q3, `GRAPH.PROFILE` shows the traversal over `postHasCreator` taking about 6.6 ms even when it expands a single post; Q29 has the same shape as Q2. Q28 now starts from the `Tagclass` and expands about 19,000 rows before filtering on `Place.name`.

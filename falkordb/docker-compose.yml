@@ -1,6 +1,6 @@
 services:
   falkordb:
-    image: falkordb/falkordb:${FALKORDB_VERSION:-6.0.1}
+    image: falkordb/falkordb:${FALKORDB_VERSION:-6.0.2}
     container_name: ldbc-snb-sf1-falkordb
     environment:
       # The image defaults to TIMEOUT 1000 (aborts read queries after 1s) and RESULTSET_SIZE 10000
