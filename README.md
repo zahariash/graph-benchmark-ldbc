@@ -129,6 +129,8 @@ uv run --frozen pytest benchmark_query.py \
 
 The runs use pytest-benchmark 5.2.3. Five rounds is a minimum, not an exact count. Query result conversion and printing remain inside the timed functions; calibration is enabled and warmup is disabled. All four graphs were verified to contain 3,181,724 nodes and 17,256,038 relationships, with expected indexes ready before timing.
 
+Every Neo4j, Kuzu and Ladybug query has a 10-second timeout; set `QUERY_TIMEOUT_SECONDS` to change it. A query that takes longer is treated as broken: it fails with `TimeoutError` instead of being timed, so one bad plan cannot stretch a run of at least five rounds into hours, and `results/compare.py` shows it as `timeout` in the table. The slowest query in the table below takes about one second. Neo4j applies the limit as a transaction timeout, and Kuzu and Ladybug use `Connection.set_query_timeout`. lance-graph 0.5.4 can neither time out nor cancel a query, so it runs without a limit.
+
 ### Mean query latency
 
 Times are in milliseconds. Parenthesized ratios are Neo4j mean / engine mean; values above 1 indicate faster execution than this Neo4j setup.
